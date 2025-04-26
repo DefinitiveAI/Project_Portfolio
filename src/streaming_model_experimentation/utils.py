@@ -1,7 +1,18 @@
+from beartype.typing import Iterator, Tuple, Dict, Any, Callable
+from beartype import beartype
 from river import datasets, linear_model, metrics
 from expectations import eprocesses
 
-def assess_predictor(dataset, model, metric, alpha, e_proc, rejection_criteria):
+@beartype
+def assess_predictor(
+    dataset: Iterator[Tuple[Dict[str, Any], int]],
+    model: linear_model.LogisticRegression,
+    metric: metrics.Accuracy,
+    alpha: float,
+    e_proc: BernoulliEProcess,
+    rejection_criteria: bool
+    ) -> None:
+
     for i, (x, y) in enumerate(dataset):
         y_pred = model.predict_one(x)
         model.learn_one(x, y)
