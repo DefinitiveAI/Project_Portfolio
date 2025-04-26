@@ -1,17 +1,16 @@
-from type_annotations import Dataset, Metric, Reals, Estimator, EProcess
+from type_annotations import Dataset, Metric, Estimator, 
 
 from beartype import beartype
 from river import datasets, linear_model, metrics
-from expectations import eprocesses
+from expectation.seqtest.sequential_e_testing import SequentialTest, TestType
+from expectation.modules.hypothesistesting import EValueConfig
 
 @beartype
 def assess_predictor(
     dataset: Dataset,
     model: Estimator,
     metric: Metric,
-    alpha: Reals,
-    e_proc: EProcess,
-    rejection_criteria: bool
+    test: SequentialTest,
     ) -> None:
 
     for i, (x, y) in enumerate(dataset):
@@ -25,14 +24,14 @@ def assess_predictor(
     
         # Update e-process with outcome: was prediction correct? (1 if correct, 0 if not)
         correct = int(y_pred_bin == y_true_bin)
-        e_proc.update(correct)
+        result = test.update([correct])
     
         # Print running accuracy and e-process value
         if (i + 1) % 100 == 0:
-            print(f"Sample {i+1}, Accuracy: {metric.get():.3f}, E-value: {e_proc.e:.4f}")
+            print(f"Sample {i+1}, Accuracy: {metric.get():.3f}, E-value: {test.e:.4f}")
     
         # Sequential test: reject null if e-process exceeds 1/alpha
-        if rejection_criteria:
+        if result.reject_null:
             print(f"\nNull hypothesis rejected after {i+1} samples!")
             print(f"Final Accuracy: {metric.get():.3f}")
             break
@@ -54,11 +53,13 @@ metric = metrics.Accuracy()
 
 # 2. Initialize e-process for sequential testing
 # We'll test if the model's accuracy is better than random guessing (null: acc <= 0.5)
-# eprocesses.BernoulliEProcess expects a stream of 0/1 outcomes
-alpha = 0.05  # significance level
-e_proc = eprocesses.BernoulliEProcess(null=0.5, alpha=alpha)
+config = EValueConfig(significance_level=0.05, allow_infinite=False)
+test = SequentialTest(
+    test_type=TestType.MEAN,
+    null_value=0.5,
+    alternative="greater",
+    config=config
+)
 
-# Likewide, establishing what our criteria are for rejecting the null hypothesis
-rejection_critetia = e_proc.e >= 1/alpha
 # 3. Stream data, make predictions, and update e-process
-assess_predictor(dataset, model, metric, alpha, e_proc, rejection_criteria)
+assess_predictor(dataset, model, metric, test)
