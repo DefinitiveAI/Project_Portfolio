@@ -1,7 +1,7 @@
 from river import datasets, linear_model, metrics
 from expectations import eprocesses
 
-def assess_predictor(dataset, model, metric, alpha, e_proc):
+def assess_predictor(dataset, model, metric, alpha, e_proc, rejection_criteria):
     for i, (x, y) in enumerate(dataset):
         y_pred = model.predict_one(x)
         model.learn_one(x, y)
@@ -20,7 +20,7 @@ def assess_predictor(dataset, model, metric, alpha, e_proc):
             print(f"Sample {i+1}, Accuracy: {metric.get():.3f}, E-value: {e_proc.e:.4f}")
     
         # Sequential test: reject null if e-process exceeds 1/alpha
-        if e_proc.e >= 1/alpha:
+        if rejection_criteria:
             print(f"\nNull hypothesis rejected after {i+1} samples!")
             print(f"Final Accuracy: {metric.get():.3f}")
             break
@@ -46,5 +46,7 @@ metric = metrics.Accuracy()
 alpha = 0.05  # significance level
 e_proc = eprocesses.BernoulliEProcess(null=0.5, alpha=alpha)
 
+# Likewide, establishing what our criteria are for rejecting the null hypothesis
+rejection_critetia = e_proc.e >= 1/alpha
 # 3. Stream data, make predictions, and update e-process
-assess_predictor(dataset, model, metric, alpha, e_proc)
+assess_predictor(dataset, model, metric, alpha, e_proc, rejection_criteria)
